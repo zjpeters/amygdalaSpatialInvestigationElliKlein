@@ -30,6 +30,20 @@ if os.path.exists(os.path.join(os.sep, 'home','zjpeters', 'Documents', 'stanly',
     stanlyLocation = os.path.join(os.sep, 'home','zjpeters', 'Documents', 'stanly','code', 'data', 'ccf') 
 else:
     stanlyLocation = os.path.join('C:', os.sep, 'Users','onyh19ug', 'Documents', 'STANLY','code', 'data', 'ccf') 
+    
+#%% load gene list and cell type lists
+
+h5adLocation = os.path.join(externalDrivePath, 'merscopeDataFromAllenInstitute', 'sourcedata', 'mouse_609882_registered_082725.h5ad')
+f = h5py.File(h5adLocation)
+x_attrs = dict(f['X'].attrs)
+geneList = list(np.array(f['var']['_index']))
+# convert byte strings to strings
+for i in range(len(geneList)):
+    geneList[i] = geneList[i].decode("utf-8")
+
+cellTypeClassNames  = f['obs']['hrc_mmc_class_name']['categories'][:]
+for i in range(len(cellTypeClassNames)):
+    cellTypeClassNames[i] = cellTypeClassNames[i].decode("utf-8")
 #%% create necessary functions
 def createRegionalCCFMask(sample, regionName):
     ccfInfo = pd.read_csv(os.path.join(stanlyLocation, 'allen_ccf_annotation.csv'))
@@ -122,7 +136,6 @@ def loadRegionalCellsFromSample(h5adLocation, regionName, geneName):
     return sample
 
 #%% load single samples data
-h5adLocation = os.path.join(externalDrivePath, 'merscopeDataFromAllenInstitute', 'sourcedata', 'mouse_609882_registered_082725.h5ad')
 hippSample = loadRegionalCellsFromSample(h5adLocation, 'Cortical amygdalar area', 'Pvalb')
 
 #%%
