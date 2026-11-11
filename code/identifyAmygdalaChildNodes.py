@@ -58,7 +58,7 @@ for splitName in nameNodeSplit:
 #%% create loop to identify amygdalar areas in list
 """
 In this section I would like you to:
-    1. Write a for loop that loops over each of the regions contained in ccfInfo['name']
+    1. Write a for loop that loops over each of the regions contained in ccfList
     2. Use the code above to create a list of all words in that make up the 
     region name that you are looping over
     3. Identify whether that region name contains the word "amygdalar"
