@@ -375,6 +375,22 @@ for filename in filenames:
 #%% function to load data for regional samples
 
 def load3dRegionalSample(save_path):
+    """
+    Load 3D regional sample created by using the saveRegionalCellsAsSample
+    function. Sample includes: sampleID, save_path, age, sex, original_filename,
+    geneList, cellTypeClassNames, ccfRegionsIncluded, ccfCoordinates,
+    cellTypeClassInt, cellTypeClassColorHex, cell_label, ccfID, and geneMatrix
+
+    Parameters
+    ----------
+    save_path : path
+        Location of sample to be loaded to workspace.
+
+    Returns
+    -------
+    dict
+        Dictionary containing sample information used for later analyses.
+    """
     sample = {}
     jsonLoc = glob(os.path.join(save_path, "*_processing_information.json"))[0]
     with open(jsonLoc) as jsonData:
