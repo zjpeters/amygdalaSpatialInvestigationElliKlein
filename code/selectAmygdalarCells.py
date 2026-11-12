@@ -201,7 +201,33 @@ plt.show()
 #%% function to create individual samples
 
 def saveRegionalCellsAsSample(h5adLocation, regionName, save_path=None, gene_list=None):
+    """
+    Using the h5ad formatted samples as input, creates a 3D sample that only
+    contains cells that are labeled as containing a particular CCF region.
     
+    The regionName parameter does not need to be exact, and will search through
+    CCF regions for any region containing that word, so can be very inclusive 
+    or exclusive.
+
+    Parameters
+    ----------
+    h5adLocation : path
+        Location of the input data.
+    regionName : str
+        The region of interest. Doesn't have to be exact CCF region but must be
+        contained somewhere in a CCF identified region.
+    save_path : path, optional
+        Location where output data should be saved. If none is given, output
+        will not be saved, only loaded to workspace. The default is None.
+    gene_list : list, optional
+        List of genes to restrict the gene matrix to. If none is given will
+        include all genes contained in the h5ad file. The default is None.
+
+    Returns
+    -------
+    dict
+        Dictionary containing sample information used for later analyses.
+    """
     sample = {}
     sample['original_filename'] = h5adLocation.split(os.sep)[-1]
     outputBasename = f"{sample['original_filename'].split('.')[0]}_{regionName}"
