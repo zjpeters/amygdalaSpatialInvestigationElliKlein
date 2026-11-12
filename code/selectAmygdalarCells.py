@@ -200,7 +200,7 @@ ax.set_zticks([])
 plt.show()
 #%% function to create individual samples
 
-def saveRegionalCellsAsSample(h5adLocation, regionName, save_path, gene_list):
+def saveRegionalCellsAsSample(h5adLocation, regionName, save_path=None, gene_list=None):
     
     sample = {}
     sample['original_filename'] = h5adLocation.split(os.sep)[-1]
@@ -275,6 +275,10 @@ def saveRegionalCellsAsSample(h5adLocation, regionName, save_path, gene_list):
         geneIdxMask = []
         for i in range(len(sample['geneList'])):
             sample['geneList'][i] = sample['geneList'][i].decode("utf-8")
+        # this is checking whether the genes in the gene list are present in each sample
+        if gene_list == None:
+            gene_list = sample['geneList']
+        for i in range(len(sample['geneList'])):
             if sample['geneList'][i] in gene_list:
                 geneIdxMask.append(i)
         geneIdxMask = np.array(geneIdxMask, dtype='int64')
@@ -304,30 +308,31 @@ def saveRegionalCellsAsSample(h5adLocation, regionName, save_path, gene_list):
             sample['cellTypeClassColorHex'][hexIdx] = f['obs']['hrc_mmc_class_color']['categories'][i].decode("utf-8")
         sample['ccfID'] = f['obs']['ccf_id'][ccfIDMask]
         f.close()
-        # save json file
-        sampleDataDict = {
-            "sampleID": sample['sampleID'],
-            "original_filename": sample['original_filename'],
-            "age": sample['age'],
-            "sex": sample['sex'],
-            "geneList": sample['geneList'],
-            "cellTypeClassNames": sample['cellTypeClassNames'],
-            "ccfRegionsIncluded": sample['regionNameList']
-        }
-        # Serializing json
-        json_object = json.dumps(sampleDataDict, indent=4)
-         
-        # Writing to processing_information.json
-        with open(os.path.join(outputPath, f"{outputBasename}_processing_information.json"), "w") as outfile:
-            outfile.write(json_object)
-            
-        pts = {'x_CCF': sample['ccfCoordinates'][:,0], 'y_CCF': sample['ccfCoordinates'][:,1], 
-               'z_CCF': sample['ccfCoordinates'][:,2], "cellTypeClassInt": sample['cellTypeClassInt'], 
-               "cellTypeClassColorHex": sample['cellTypeClassColorHex'], "ccfID": sample['ccfID'], 
-               "cell_label": sample['cell_label']}
-        pts = pd.DataFrame(pts)
-        pts.to_csv(os.path.join(outputPath, f"{outputBasename}_ccf_coordinates.csv"), index=False)
-        sp_sparse.save_npz(os.path.join(outputPath, f"{outputBasename}_gene_matrix"), sample['geneMatrix'])
+        if save_path != None:
+            # save json file
+            sampleDataDict = {
+                "sampleID": sample['sampleID'],
+                "original_filename": sample['original_filename'],
+                "age": sample['age'],
+                "sex": sample['sex'],
+                "geneList": sample['geneList'],
+                "cellTypeClassNames": sample['cellTypeClassNames'],
+                "ccfRegionsIncluded": sample['regionNameList']
+            }
+            # Serializing json
+            json_object = json.dumps(sampleDataDict, indent=4)
+             
+            # Writing to processing_information.json
+            with open(os.path.join(outputPath, f"{outputBasename}_processing_information.json"), "w") as outfile:
+                outfile.write(json_object)
+                
+            pts = {"cell_label": sample['cell_label'], 'x_CCF': sample['ccfCoordinates'][:,0],
+                   'y_CCF': sample['ccfCoordinates'][:,1], 'z_CCF': sample['ccfCoordinates'][:,2],
+                   "cellTypeClassInt": sample['cellTypeClassInt'], "cellTypeClassColorHex": sample['cellTypeClassColorHex'],
+                   "ccfID": sample['ccfID'], "z_coord": sample['z_coord']}
+            pts = pd.DataFrame(pts)
+            pts.to_csv(os.path.join(outputPath, f"{outputBasename}_ccf_coordinates.csv"), index=False)
+            sp_sparse.save_npz(os.path.join(outputPath, f"{outputBasename}_gene_matrix"), sample['geneMatrix'])
     return sample
 
 amygSample = saveRegionalCellsAsSample(h5adLocation, 'amygdalar', os.path.join('/','media','zjpeters','Expansion','eklein','rawdata'), overlappingGenes)
@@ -338,7 +343,7 @@ filenames = ['mouse_609882_registered_082725.h5ad', 'mouse_609889_registered_082
              'mouse_638850_registered_082725.h5ad', 'mouse_687997_registered_082725.h5ad']
 
 for filename in filenames:
-    fileLocation = h5adLocation = os.path.join('/', 'media','zjpeters', 'Expansion', 'merscopeDataFromAllenInstitute', 'sourcedata', filename)
+    h5adLocation = os.path.join('/', 'media','zjpeters', 'Expansion', 'merscopeDataFromAllenInstitute', 'sourcedata', filename)
     amygSample = saveRegionalCellsAsSample(h5adLocation, 'amygdalar', os.path.join('/','media','zjpeters','Expansion','eklein','rawdata'), overlappingGenes)
 
 #%% function to load data for regional samples
@@ -363,6 +368,7 @@ def load3dRegionalSample(save_path):
     sample['cellTypeClassColorHex'] = np.array(ccfCsvData['cellTypeClassColorHex'], dtype=np.dtype('U17'))
     sample['cell_label'] = np.array(ccfCsvData['cell_label'], dtype=np.dtype('U7'))
     sample['ccfID'] = np.array(ccfCsvData['ccfID'], dtype='int64')
+    sample['z_coord'] = np.array(ccfCsvData['z_coord'], dtype='int64')
     geneMatrixLoc = glob(os.path.join(save_path, "*_gene_matrix.npz"))[0]
     sample['geneMatrix'] = sp_sparse.load_npz(geneMatrixLoc)
     return sample

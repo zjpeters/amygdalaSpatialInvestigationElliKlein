@@ -36,6 +36,7 @@ def load3dRegionalSample(save_path):
     sample['cellTypeClassColorHex'] = np.array(ccfCsvData['cellTypeClassColorHex'], dtype=np.dtype('U17'))
     sample['cell_label'] = np.array(ccfCsvData['cell_label'], dtype=np.dtype('U7'))
     sample['ccfID'] = np.array(ccfCsvData['ccfID'], dtype='int64')
+    sample['z_coord'] = np.array(ccfCsvData['z_coord'], dtype='int64')
     geneMatrixLoc = glob(os.path.join(save_path, "*_gene_matrix.npz"))[0]
     sample['geneMatrix'] = sp_sparse.load_npz(geneMatrixLoc)
     return sample
