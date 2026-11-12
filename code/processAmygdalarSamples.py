@@ -17,6 +17,22 @@ derivatives = os.path.join('/','media','zjpeters','Expansion','eklein','derivati
 #%% function to load data for regional samples
 
 def load3dRegionalSample(save_path):
+    """
+    Load 3D regional sample created by using the saveRegionalCellsAsSample
+    function. Sample includes: sampleID, save_path, age, sex, original_filename,
+    geneList, cellTypeClassNames, ccfRegionsIncluded, ccfCoordinates,
+    cellTypeClassInt, cellTypeClassColorHex, cell_label, ccfID, and geneMatrix
+
+    Parameters
+    ----------
+    save_path : path
+        Location of sample to be loaded to workspace.
+
+    Returns
+    -------
+    dict
+        Dictionary containing sample information used for later analyses.
+    """
     sample = {}
     jsonLoc = glob(os.path.join(save_path, "*_processing_information.json"))[0]
     with open(jsonLoc) as jsonData:
@@ -43,9 +59,14 @@ def load3dRegionalSample(save_path):
 
 #%% load samples
 
-filenames = ['mouse_609882_registered_082725_amygdalar', 'mouse_609889_registered_082725_amygdalar',
+foldernames = ['mouse_609882_registered_082725_amygdalar', 'mouse_609889_registered_082725_amygdalar',
              'mouse_638850_registered_082725_amygdalar', 'mouse_687997_registered_082725_amygdalar']
 
 allSamples = {}
-for i, filename in enumerate(filenames):
-    allSamples[i] = load3dRegionalSample(os.path.join(rawdata,filename))
+for i, foldername in enumerate(foldernames):
+    print(i, foldername)
+    allSamples[foldername] = load3dRegionalSample(os.path.join(rawdata, foldername))
+
+#%% 
+
+nOfCCF = len(np.where(allSamples['mouse_609882_registered_082725_amygdalar']['ccfID'] == 1105)[0])
