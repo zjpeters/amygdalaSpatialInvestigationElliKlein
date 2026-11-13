@@ -12,8 +12,9 @@ import pandas as pd
 import numpy as np
 import scipy.sparse as sp_sparse
 currentLocation = os.path.dirname(os.path.abspath(__file__))
-rawdata = os.path.join('/','media','zjpeters','Expansion','eklein','rawdata')
-derivatives = os.path.join('/','media','zjpeters','Expansion','eklein','derivatives')
+rawdata = os.path.join('C:',os.sep,'Users','Rena','Downloads','Uni','Spatial Transcriptomics',"amygdalaSpatialInvestigationElliKlein","rawdata")
+derivatives = os.path.join('C:',os.sep,'Users','Rena','Downloads','Uni','Spatial Transcriptomics',"amygdalaSpatialInvestigationElliKlein","derivatives")
+
 #%% function to load data for regional samples
 
 def load3dRegionalSample(save_path):
@@ -67,6 +68,65 @@ for i, foldername in enumerate(foldernames):
     print(i, foldername)
     allSamples[foldername] = load3dRegionalSample(os.path.join(rawdata, foldername))
 
-#%% 
+#%% count cells of one specific cell type in one sample
+cellTypeIdx = allSamples['mouse_609882_registered_082725_amygdalar']["cellTypeClassNames"].index("01 IT-ET Glut")
+nOfCellType = len(np.where(allSamples['mouse_609882_registered_082725_amygdalar']['cellTypeClassInt'] == cellTypeIdx)[0])
+#%% write a function to find all cells of a cell Type
+cellTypeIdxList = []
+for cellTypeName in allSamples['mouse_609882_registered_082725_amygdalar']["cellTypeClassNames"]:
+    cellTypeSplit = cellTypeName.split(" ")
+    if "Glut" in cellTypeSplit:
+        print(cellTypeName)
+        cellTypeIdx = allSamples['mouse_609882_registered_082725_amygdalar']["cellTypeClassNames"].index(cellTypeName)
+        cellTypeIdxList.append(cellTypeIdx)
+# convert list into np.array
+cellTypeIdxList = np.array(cellTypeIdxList, dtype = "int32")
+       
+nOfCellType = 0
+for cellTypeIdx in cellTypeIdxList:
+    nOfCellType += len(np.where(allSamples['mouse_609882_registered_082725_amygdalar']['cellTypeClassInt'] == cellTypeIdx)[0]) 
+    print(nOfCellType)
 
-nOfCCF = len(np.where(allSamples['mouse_609882_registered_082725_amygdalar']['ccfID'] == 1105)[0])
+
+
+#%%
+
+def countAllCellsOfCellType(sample, cellType):
+    cellTypeIdxList = []
+    for cellTypeName in sample["cellTypeClassNames"]:
+        cellTypeSplit = cellTypeName.split(" ")
+        if cellType in cellTypeSplit:
+            #print(cellTypeName)
+            cellTypeIdx = sample["cellTypeClassNames"].index(cellTypeName)
+            cellTypeIdxList.append(cellTypeIdx)
+        elif cellType == cellTypeName:
+            cellTypeIdx = sample["cellTypeClassNames"].index(cellTypeName)
+            cellTypeIdxList.append(cellTypeIdx)
+            
+    # convert list into np.array
+    cellTypeIdxList = np.array(cellTypeIdxList, dtype = "int32")
+           
+    nOfCellType = 0
+    for cellTypeIdx in cellTypeIdxList:
+        nOfCellType += len(np.where(sample['cellTypeClassInt'] == cellTypeIdx)[0]) 
+    return nOfCellType
+x = countAllCellsOfCellType(allSamples['mouse_609882_registered_082725_amygdalar'], "GABA")
+
+# recreate for Loop for each sample to count Glut cells, rename x and append it to a list 
+#list
+for sampleID in foldernames:
+    allSamples[sampleID]
+        
+    
+
+
+
+
+
+
+
+
+
+
+
+
