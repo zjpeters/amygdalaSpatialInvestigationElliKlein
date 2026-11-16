@@ -11,6 +11,9 @@ from glob import glob
 import pandas as pd
 import numpy as np
 import scipy.sparse as sp_sparse
+import umap 
+from matplotlib import pyplot as plt
+import matplotlib.patches as mpatches 
 currentLocation = os.path.dirname(os.path.abspath(__file__))
 rawdata = os.path.join('C:',os.sep,'Users','Rena','Downloads','Uni','Spatial Transcriptomics',"amygdalaSpatialInvestigationElliKlein","rawdata")
 derivatives = os.path.join('C:',os.sep,'Users','Rena','Downloads','Uni','Spatial Transcriptomics',"amygdalaSpatialInvestigationElliKlein","derivatives")
@@ -71,7 +74,7 @@ for i, foldername in enumerate(foldernames):
 #%% count cells of one specific cell type in one sample
 cellTypeIdx = allSamples['mouse_609882_registered_082725_amygdalar']["cellTypeClassNames"].index("01 IT-ET Glut")
 nOfCellType = len(np.where(allSamples['mouse_609882_registered_082725_amygdalar']['cellTypeClassInt'] == cellTypeIdx)[0])
-#%% write a function to find all cells of a cell Type
+#%% write a function to find all cells of a cell type
 cellTypeIdxList = []
 for cellTypeName in allSamples['mouse_609882_registered_082725_amygdalar']["cellTypeClassNames"]:
     cellTypeSplit = cellTypeName.split(" ")
@@ -89,7 +92,7 @@ for cellTypeIdx in cellTypeIdxList:
 
 
 
-#%%
+#%% function to count cells of different cell types
 
 def countAllCellsOfCellType(sample, cellType):
     cellTypeIdxList = []
@@ -110,12 +113,73 @@ def countAllCellsOfCellType(sample, cellType):
     for cellTypeIdx in cellTypeIdxList:
         nOfCellType += len(np.where(sample['cellTypeClassInt'] == cellTypeIdx)[0]) 
     return nOfCellType
-x = countAllCellsOfCellType(allSamples['mouse_609882_registered_082725_amygdalar'], "GABA")
+totalNumberOfCells = countAllCellsOfCellType(allSamples['mouse_609882_registered_082725_amygdalar'], "Glut")
 
-# recreate for Loop for each sample to count Glut cells, rename x and append it to a list 
-#list
+# 1. recreate a for Loop for each sample to count Glut cells
+# 2. rename x = totalNumberOfCells and append it to a list 
+# 3. Write a code that converts raw numbers to ratio %
+
+
+totalNumberOfCellsList = []
+cellsRatioList = []
 for sampleID in foldernames:
-    allSamples[sampleID]
+    sample = allSamples[sampleID]
+   # allSamples[sampleID]
+    totalNumberOfCells = countAllCellsOfCellType(sample, "Glut")
+    totalNumberOfCellsList.append(totalNumberOfCells)
+    cellsRatio = (totalNumberOfCells/len(sample["cellTypeClassInt"]))* 100
+    cellsRatioList.append(cellsRatio)
+
+# raw numbers to ratio with Glut cells
+
+#cellsRatioList = []
+#len(sample["cellTypeClassInt"])
+#ratio = ("totalNumberOfCells"/len(sample["cellTypeClassInt"]))* 100
+#%%
+def createCellTypeMask(sample, cellType):
+    cellTypeIdxList = []
+    for cellTypeName in sample["cellTypeClassNames"]:
+        cellTypeSplit = cellTypeName.split(" ")
+        if cellType in cellTypeSplit:
+            #print(cellTypeName)
+            cellTypeIdx = sample["cellTypeClassNames"].index(cellTypeName)
+            cellTypeIdxList.append(cellTypeIdx)
+        elif cellType == cellTypeName:
+            cellTypeIdx = sample["cellTypeClassNames"].index(cellTypeName)
+            cellTypeIdxList.append(cellTypeIdx)
+            
+    # convert list into np.array
+    cellTypeIdxList = np.array(cellTypeIdxList, dtype = "int32")
+           
+    allCellTypeIdx = np.empty(0, dtype="int64")
+    for cellTypeIdx in cellTypeIdxList:
+        allCellTypeIdx = np.append(allCellTypeIdx, np.where(sample['cellTypeClassInt'] == cellTypeIdx)[0])
+    allCellTypeIdx = np.sort(allCellTypeIdx)
+    return allCellTypeIdx
+cellIdxArray = createCellTypeMask(allSamples['mouse_609882_registered_082725_amygdalar'], "Glut")
+#%% set up umap 
+
+
+reducer = umap.UMAP(random_state=9)
+embedding = reducer.fit_transform(allSamples['mouse_609882_registered_082725_amygdalar']["geneMatrix"][:, :])
+#%% plotting Umap
+
+plt.close("all")
+plt.scatter(embedding[:, 0], embedding[:, 1], s = 1, linewidth= 0)
+plt.show()
+#%% plot with colors based on cellType
+
+plt.close("all")
+fig, ax = plt.subplots(1,1)
+ax.scatter(embedding[:, 0], embedding[:, 1], s = 1, linewidth= 0, c = allSamples['mouse_609882_registered_082725_amygdalar']["cellTypeClassColorHex"])
+
+
+
+
+
+plt.show()
+
+    
         
     
 
