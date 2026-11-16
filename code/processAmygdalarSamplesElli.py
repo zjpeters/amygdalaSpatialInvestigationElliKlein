@@ -154,6 +154,7 @@ def createCellTypeMask(sample, cellType):
     allCellTypeIdx = np.empty(0, dtype="int64")
     for cellTypeIdx in cellTypeIdxList:
         allCellTypeIdx = np.append(allCellTypeIdx, np.where(sample['cellTypeClassInt'] == cellTypeIdx)[0])
+        print(sample["cellTypeClassNames"][cellTypeIdx])
     allCellTypeIdx = np.sort(allCellTypeIdx)
     return allCellTypeIdx
 cellIdxArray = createCellTypeMask(allSamples['mouse_609882_registered_082725_amygdalar'], "Glut")
@@ -161,7 +162,7 @@ cellIdxArray = createCellTypeMask(allSamples['mouse_609882_registered_082725_amy
 
 
 reducer = umap.UMAP(random_state=9)
-embedding = reducer.fit_transform(allSamples['mouse_609882_registered_082725_amygdalar']["geneMatrix"][:, :])
+embedding = reducer.fit_transform(allSamples['mouse_609882_registered_082725_amygdalar']["geneMatrix"][cellIdxArray, :])
 #%% plotting Umap
 
 plt.close("all")
@@ -169,10 +170,19 @@ plt.scatter(embedding[:, 0], embedding[:, 1], s = 1, linewidth= 0)
 plt.show()
 #%% plot with colors based on cellType
 
+hexdf = pd.read_csv(os.path.join(currentLocation, "data", "ccf_color_hex_codes.csv"))
 plt.close("all")
 fig, ax = plt.subplots(1,1)
-ax.scatter(embedding[:, 0], embedding[:, 1], s = 1, linewidth= 0, c = allSamples['mouse_609882_registered_082725_amygdalar']["cellTypeClassColorHex"])
-
+ax.scatter(embedding[:, 0], embedding[:, 1], s = 1, linewidth= 0, c = np.array(allSamples['mouse_609882_registered_082725_amygdalar']["cellTypeClassColorHex"])[cellIdxArray])
+uniqueCellColors = np.unique(np.array(allSamples['mouse_609882_registered_082725_amygdalar']["cellTypeClassColorHex"])[cellIdxArray])
+uniqueCellIdx = np.unique(np.array(allSamples['mouse_609882_registered_082725_amygdalar']["cellTypeClassInt"])[cellIdxArray])
+handles, labels= ax.get_legend_handles_labels()
+for i in range(len(uniqueCellColors)):
+    # h = hexdf["color_hex"][i].lstrip("#")
+    # rgbCode = np.array(tuple(int(h[i:i+2], 16) for i in (0,2,4)))/255
+    patch = mpatches.Patch(color = uniqueCellColors[i], label = hexdf["cell_type"][hexdf["color_hex"] == uniqueCellColors[i]])
+    handles.append(patch)
+ax.legend(handles = handles, ncols = 3)
 
 
 
