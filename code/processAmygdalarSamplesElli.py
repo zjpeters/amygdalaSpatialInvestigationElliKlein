@@ -176,8 +176,22 @@ fig, ax = plt.subplots(1,1)
 ax.scatter(embedding[:, 0], embedding[:, 1], s = 1, linewidth= 0, c = np.array(allSamples['mouse_609882_registered_082725_amygdalar']["cellTypeClassColorHex"])[cellIdxArray])
 uniqueCellColors = np.unique(np.array(allSamples['mouse_609882_registered_082725_amygdalar']["cellTypeClassColorHex"])[cellIdxArray])
 uniqueCellIdx = np.unique(np.array(allSamples['mouse_609882_registered_082725_amygdalar']["cellTypeClassInt"])[cellIdxArray])
+
+"""
+in order to display proper colors on the UMAP scatter plots, need to add the 
+scatters group by group, rather than all at once. To do this, the ax.scatter 
+function above needs to be put inside the loop, and cells only added when they
+are from a particular mask. 
+
+1. Loop over the uniqueCellIdx and use the np.where(...)[0] to create a mask to 
+    use to mask the cells in your scatter plot, such as:
+        ax.scatter(embedding[newMask, 0], embedding[newMask,1]...)
+2. In the same loop, use the uniqueCellIdx to select the correct color from the 
+    hexdf dataframe and use that as a single input for c= in your ax.scatter
+    as well as for the color in mpatches.Patch
+"""
 handles, labels= ax.get_legend_handles_labels()
-for i in range(len(uniqueCellColors)):
+for i in range(len(uniqueCellIdx)):
     # h = hexdf["color_hex"][i].lstrip("#")
     # rgbCode = np.array(tuple(int(h[i:i+2], 16) for i in (0,2,4)))/255
     patch = mpatches.Patch(color = uniqueCellColors[i], label = hexdf["cell_type"][hexdf["color_hex"] == uniqueCellColors[i]])
@@ -189,7 +203,7 @@ ax.legend(handles = handles, ncols = 3)
 
 plt.show()
 
-    
+
         
     
 
