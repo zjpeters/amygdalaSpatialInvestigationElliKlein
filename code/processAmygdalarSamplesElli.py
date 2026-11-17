@@ -158,11 +158,17 @@ def createCellTypeMask(sample, cellType):
     allCellTypeIdx = np.sort(allCellTypeIdx)
     return allCellTypeIdx
 cellIdxArray = createCellTypeMask(allSamples['mouse_609882_registered_082725_amygdalar'], "Glut")
-#%% set up umap 
+#%% set up umap and save it
 
-
+umapSaveLoc = os.path.join(derivatives, f"{allSamples['mouse_609882_registered_082725_amygdalar']['sampleID']}_umap_embedding.csv")
 reducer = umap.UMAP(random_state=9)
-embedding = reducer.fit_transform(allSamples['mouse_609882_registered_082725_amygdalar']["geneMatrix"][cellIdxArray, :])
+if os.path.exists(umapSaveLoc):
+    embedding = pd.read_csv(umapSaveLoc)
+    embedding = np.array(embedding, dtype= "float32")
+else: 
+    embedding = reducer.fit_transform(allSamples['mouse_609882_registered_082725_amygdalar']["geneMatrix"][cellIdxArray, :])
+    embeddingdf = pd.DataFrame(embedding)
+    embeddingdf.to_csv(umapSaveLoc, index = False)
 #%% plotting Umap
 
 plt.close("all")
@@ -190,20 +196,50 @@ are from a particular mask.
     hexdf dataframe and use that as a single input for c= in your ax.scatter
     as well as for the color in mpatches.Patch
 """
+
+#%%
+umapFigLoc = os.path.join(derivatives, f"{allSamples['mouse_609882_registered_082725_amygdalar']['sampleID']}_Glut_umap_figure.pdf")
+plt.close("all")
+fig, ax = plt.subplots(1,1, figsize = [7.2, 7.2])
 handles, labels= ax.get_legend_handles_labels()
-for i in range(len(uniqueCellIdx)):
+for i, currentCell in enumerate(uniqueCellIdx):
+    color = uniqueCellColors[i]
+    newMask = np.where(np.array(allSamples['mouse_609882_registered_082725_amygdalar']["cellTypeClassInt"])[cellIdxArray] == currentCell)[0]
+    print(f"n of {hexdf['cell_type'][currentCell]}: ",len(newMask))
+    ax.scatter(embedding[newMask, 0], embedding[newMask, 1], c = color, s = 1, linewidth = 0)
+    #hexdf[hexdf["cell_type"] == currentCell]
     # h = hexdf["color_hex"][i].lstrip("#")
     # rgbCode = np.array(tuple(int(h[i:i+2], 16) for i in (0,2,4)))/255
-    patch = mpatches.Patch(color = uniqueCellColors[i], label = hexdf["cell_type"][hexdf["color_hex"] == uniqueCellColors[i]])
+    patch = mpatches.Patch(color = color, label = hexdf["cell_type"][currentCell])
+    print(patch)
     handles.append(patch)
-ax.legend(handles = handles, ncols = 3)
-
-
-
-
+    print(handles)
+ax.legend(handles = handles, ncols = 3, fontsize = 7)
+plt.title(f"UMAP of all glutaminergic cells in amygdala of: \n {allSamples['mouse_609882_registered_082725_amygdalar']['sampleID']}, {allSamples['mouse_609882_registered_082725_amygdalar']['age']}, {allSamples['mouse_609882_registered_082725_amygdalar']['sex']} ")
 plt.show()
+plt.savefig(umapFigLoc, dpi = 300, bbox_inches = "tight")
 
+#%% create empty array for all samples then for loop to add gene matrices to the array
+# with each sample identifiy only Glut cells, append only Glut cells of Gene Matrix, use same mask 
+#-> cellIdxArray = createCellTypeMask(allSamples['mouse_609882_registered_082725_amygdalar'], "Glut")
 
+allSubGeneMatrix = np.empty([0, 279])
+allSubSexArray = np.empty(0, dtype= "str")
+allSubColorArray = np.empty(0, dtype= "str")
+for sampleID in foldernames:
+    cellIdxArray = createCellTypeMask(allSamples[sampleID], "Glut")
+    allSubGeneMatrix = np.append(allSubGeneMatrix, allSamples[sampleID]["geneMatrix"][cellIdxArray, :].todense(), axis= 0)
+    subSexArray = np.full(len(cellIdxArray), dtype= "str", fill_value = allSamples[sampleID]["sex"])
+    allSubSexArray = np.append(allSubSexArray,np.array(subSexArray), axis =0)
+    allSubColorArray = np.append(allSubColorArray, allSamples[sampleID]["cellTypeClassColorHex"][cellIdxArray], axis= 0)
+allSubGeneMatrix = sp_sparse.csr_matrix(allSubGeneMatrix)
+
+#%% create umap with allSubGeneMatrix 
+# 1. with cellTypeColors, one umap for all samples for just one global cell type, Glut or GABA
+# 2. plot male and female, either different colors or two different umaps side by side
+# 3. save umap and images as pdf
+    
+    
         
     
 
