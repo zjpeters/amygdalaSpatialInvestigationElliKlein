@@ -14,11 +14,16 @@ import scipy.sparse as sp_sparse
 import umap 
 from matplotlib import pyplot as plt
 import matplotlib.patches as mpatches 
-import matplotlib.colors as cm
+# import matplotlib.colors as pltcolors
+import matplotlib.cm as cm
 currentLocation = os.path.dirname(os.path.abspath(__file__))
-rawdata = os.path.join('C:',os.sep,'Users','Rena','Downloads','Uni','Spatial Transcriptomics',"amygdalaSpatialInvestigationElliKlein","rawdata")
-derivatives = os.path.join('C:',os.sep,'Users','Rena','Downloads','Uni','Spatial Transcriptomics',"amygdalaSpatialInvestigationElliKlein","derivatives")
-
+# added a section that checks whether code is running on your computer or mine
+if os.path.exists(os.path.join('C:',os.sep,'Users','Rena')):
+    rawdata = os.path.join('C:',os.sep,'Users','Rena','Downloads','Uni','Spatial Transcriptomics',"amygdalaSpatialInvestigationElliKlein","rawdata")
+    derivatives = os.path.join('C:',os.sep,'Users','Rena','Downloads','Uni','Spatial Transcriptomics',"amygdalaSpatialInvestigationElliKlein","derivatives")
+elif os.path.exists(os.path.join(os.sep,'media','zjpeters','Expansion')):
+    rawdata = os.path.join(os.sep,'media','zjpeters','Expansion', 'eklein','rawdata')
+    derivatives = os.path.join(os.sep,'media','zjpeters','Expansion', 'eklein','derivatives')
 #%% function to load data for regional samples
 
 def load3dRegionalSample(save_path, remove_blanks = True):
@@ -91,9 +96,6 @@ for i, gene in enumerate(allSamples['mouse_609882_registered_082725_amygdalar'][
         print(i, gene)
         geneIdxArray.append(i)
 geneIdxArray = np.array(geneIdxArray, dtype = "int32")
-        
-        
-
 
 #%% count cells of one specific cell type in one sample
 cellTypeIdx = allSamples['mouse_609882_registered_082725_amygdalar']["cellTypeClassNames"].index("01 IT-ET Glut")
@@ -295,7 +297,8 @@ plt.close("all")
 plt.scatter(embedding[maleIdxArray][:,0], embedding[maleIdxArray][:,1], s = 1, linewidth= 0, c = "blue", label = "Male" )
 plt.scatter(embedding[femaleIdxArray][:,0], embedding[femaleIdxArray][:,1], s = 1, linewidth= 0, c = "red", label = "Female" )
 plt.title("UMAP of Glut cells in Male and Female")
-plt.legend()
+# adding markerscale argument allows us to change the size of the markers in the legend
+plt.legend(markerscale=5)
 plt.savefig(umapMaleFemaleFigLoc)
 plt.show()
 
@@ -316,39 +319,44 @@ plt.show()
 umapAllSamples = os.path.join(derivatives, "all_samples_umap_figure.pdf")
 plt.close("all")
 for sampleID in foldernames:
-    
-
     sampleIDIdxArray = allSubIDArray == sampleID
-    
     #embedding[maleIdxArray, :]
     #embedding[femaleIdxArray, :]
-    
-    
     plt.scatter(embedding[sampleIDIdxArray][:,0], embedding[sampleIDIdxArray][:,1], s = 1, linewidth= 0, label = sampleID )
     
     plt.title("UMAP of all samples")
-plt.legend()
+plt.legend(markerscale=5)
 plt.savefig(umapAllSamples)
 plt.show()
 
 #%% one sample slices
-
+plt.close('all')
 uniqueSampleSlices = np.unique(allSamples['mouse_609882_registered_082725_amygdalar']["z_coord"])
-# colors = [cm.to_hex(plt.cm.tab20(i)for i in range(len(uniqueSampleSlices)))]
-
+"""
+realized the previous code I'd written using this approach used matplotlib.cm
+instead of matplotlib.colors, which the stack overflow we saw used. this works
+"""
+### can uncomment the line below and comment out the three lines after "create colormap..."
+### to use a colormap that is spread across a single colormap chosen from:
+### https://matplotlib.org/stable/users/explain/colors/colormaps.html
+# colors = cm.Spectral(np.arange(len(uniqueSampleSlices)) / len(uniqueSampleSlices))
+# create colormap that combines tab20b and tab20c to get a total of 40 (mostly) unique colors
+colors = np.empty([0,4])
+colors = np.append(colors, cm.tab20b(np.arange(20)/20), axis=0)
+colors = np.append(colors, cm.tab20c(np.arange(20)/20), axis=0)
+cellIdxArray = createCellTypeMask(allSamples['mouse_609882_registered_082725_amygdalar'], "Glut")
 sampleIDIdxArray = allSubIDArray == 'mouse_609882_registered_082725_amygdalar'
 sampleEmbedding = embedding[sampleIDIdxArray, :]
+fig, ax = plt.subplots(1,1, figsize=[7.2, 5.2])
 for i, z_cord in enumerate(uniqueSampleSlices):
-    sliceIdxArray = allSamples['mouse_609882_registered_082725_amygdalar']["z_coord"] == z_cord
-    plt.scatter(sampleEmbedding[sliceIdxArray][:,0], sampleEmbedding[sliceIdxArray][:,1], s = 1, linewidth= 0, label = z_cord)
+    sliceIdxArray = allSamples['mouse_609882_registered_082725_amygdalar']["z_coord"][cellIdxArray] == z_cord
+    ax.scatter(sampleEmbedding[sliceIdxArray][:,0], sampleEmbedding[sliceIdxArray][:,1], s = 1, linewidth= 0, label = z_cord, color=colors[i])
 
 plt.title("UMAP of all samples")
-plt.legend()
+plt.legend(markerscale=3, ncols = 3, fontsize=6)
 #plt.savefig(umapAllSamples)
 plt.show()
     
-
-
 
 
 
