@@ -14,13 +14,14 @@ import scipy.sparse as sp_sparse
 import umap 
 from matplotlib import pyplot as plt
 import matplotlib.patches as mpatches 
+import matplotlib.colors as cm
 currentLocation = os.path.dirname(os.path.abspath(__file__))
 rawdata = os.path.join('C:',os.sep,'Users','Rena','Downloads','Uni','Spatial Transcriptomics',"amygdalaSpatialInvestigationElliKlein","rawdata")
 derivatives = os.path.join('C:',os.sep,'Users','Rena','Downloads','Uni','Spatial Transcriptomics',"amygdalaSpatialInvestigationElliKlein","derivatives")
 
 #%% function to load data for regional samples
 
-def load3dRegionalSample(save_path):
+def load3dRegionalSample(save_path, remove_blanks = True):
     """
     Load 3D regional sample created by using the saveRegionalCellsAsSample
     function. Sample includes: sampleID, save_path, age, sex, original_filename,
@@ -49,6 +50,15 @@ def load3dRegionalSample(save_path):
         sample['geneList'] = jsonDict['geneList']
         sample['cellTypeClassNames'] = jsonDict['cellTypeClassNames']
         sample['ccfRegionsIncluded'] = jsonDict['ccfRegionsIncluded']
+    if remove_blanks == True:
+        geneIdxArray = []
+        geneList = []
+        for i, gene in enumerate(sample["geneList"]):
+            if "Blank-" not in gene:
+                geneList.append(gene)
+                geneIdxArray.append(i)
+        geneIdxArray = np.array(geneIdxArray, dtype = "int32")
+        sample["geneList"] = geneList
     ccfCoorCsvLoc = glob(os.path.join(save_path, "*ccf_coordinates.csv"))[0]
     ccfCsvData = pd.read_csv(ccfCoorCsvLoc)
     sample['ccfCoordinates'] = np.array([ccfCsvData['x_CCF'], ccfCsvData['y_CCF'], ccfCsvData['z_CCF']]).T
@@ -59,6 +69,8 @@ def load3dRegionalSample(save_path):
     sample['z_coord'] = np.array(ccfCsvData['z_coord'], dtype='int64')
     geneMatrixLoc = glob(os.path.join(save_path, "*_gene_matrix.npz"))[0]
     sample['geneMatrix'] = sp_sparse.load_npz(geneMatrixLoc)
+    if remove_blanks == True:
+        sample["geneMatrix"]= sample["geneMatrix"][:, geneIdxArray]
     return sample
 
 #%% load samples
@@ -70,6 +82,18 @@ allSamples = {}
 for i, foldername in enumerate(foldernames):
     print(i, foldername)
     allSamples[foldername] = load3dRegionalSample(os.path.join(rawdata, foldername))
+    
+#%%
+geneIdxArray = []
+for i, gene in enumerate(allSamples['mouse_609882_registered_082725_amygdalar']["geneList"]):
+    if "Blank-" not in gene:
+    
+        print(i, gene)
+        geneIdxArray.append(i)
+geneIdxArray = np.array(geneIdxArray, dtype = "int32")
+        
+        
+
 
 #%% count cells of one specific cell type in one sample
 cellTypeIdx = allSamples['mouse_609882_registered_082725_amygdalar']["cellTypeClassNames"].index("01 IT-ET Glut")
@@ -223,7 +247,8 @@ plt.savefig(umapFigLoc, dpi = 300, bbox_inches = "tight")
 # with each sample identifiy only Glut cells, append only Glut cells of Gene Matrix, use same mask 
 #-> cellIdxArray = createCellTypeMask(allSamples['mouse_609882_registered_082725_amygdalar'], "Glut")
 
-allSubGeneMatrix = np.empty([0, 279])
+allSubIDArray = np.empty(0, dtype = "object")
+allSubGeneMatrix = np.empty([0, len(allSamples['mouse_609882_registered_082725_amygdalar']["geneList"])])
 allSubSexArray = np.empty(0, dtype= "str")
 allSubColorArray = np.empty(0, dtype= "str")
 for sampleID in foldernames:
@@ -232,15 +257,95 @@ for sampleID in foldernames:
     subSexArray = np.full(len(cellIdxArray), dtype= "str", fill_value = allSamples[sampleID]["sex"])
     allSubSexArray = np.append(allSubSexArray,np.array(subSexArray), axis =0)
     allSubColorArray = np.append(allSubColorArray, allSamples[sampleID]["cellTypeClassColorHex"][cellIdxArray], axis= 0)
+    subIDArray = np.full(len(cellIdxArray), dtype= "object", fill_value = allSamples[sampleID]["sampleID"])
+    allSubIDArray = np.append(allSubIDArray, np.array(subIDArray), axis = 0)
 allSubGeneMatrix = sp_sparse.csr_matrix(allSubGeneMatrix)
+del(subSexArray, subIDArray, cellIdxArray)
 
 #%% create umap with allSubGeneMatrix 
-# 1. with cellTypeColors, one umap for all samples for just one global cell type, Glut or GABA
+# 1. with cellTypeColors, create one umap for all samples for just one global cell type -> Glut or GABA
 # 2. plot male and female, either different colors or two different umaps side by side
-# 3. save umap and images as pdf
+# 3. save umap and save images as pdf
+   
+# creating umap for glut cells in all samples
+globalUmapCsvLoc = os.path.join(derivatives, "global_Glut_umap_embedding.csv") 
+if os.path.exists(globalUmapCsvLoc):
+    embedding = pd.read_csv(globalUmapCsvLoc)
+    embedding = np.array(embedding, dtype= "float32")
+else: 
+    embedding = reducer.fit_transform(allSubGeneMatrix)
+    embeddingdf = pd.DataFrame(embedding)
+    embeddingdf.to_csv(globalUmapCsvLoc, index = False)
+globalUmapFigLoc = os.path.join(derivatives, "global_Glut_umap_figure.pdf")
+plt.close("all")
+plt.scatter(embedding[:, 0], embedding[:, 1], s = 1, linewidth= 0, c = allSubColorArray)
+plt.title("global UMAP of Glut cells")
+plt.savefig(globalUmapFigLoc)
+plt.show()
+
+#%%
+# creating one umap with all Glut cells in male and female, using different colors for M and F
+maleIdxArray = allSubSexArray == "M"
+femaleIdxArray = allSubSexArray == "F"
+
+#embedding[maleIdxArray, :]
+#embedding[femaleIdxArray, :]
+umapMaleFemaleFigLoc = os.path.join(derivatives, "male_female_Glut_umap_figure.pdf")
+plt.close("all")
+plt.scatter(embedding[maleIdxArray][:,0], embedding[maleIdxArray][:,1], s = 1, linewidth= 0, c = "blue", label = "Male" )
+plt.scatter(embedding[femaleIdxArray][:,0], embedding[femaleIdxArray][:,1], s = 1, linewidth= 0, c = "red", label = "Female" )
+plt.title("UMAP of Glut cells in Male and Female")
+plt.legend()
+plt.savefig(umapMaleFemaleFigLoc)
+plt.show()
+
+#%%
+# creating two umaps side by side of all Glut cells in male and female
+umapMaleFemaleSepFigLoc = os.path.join(derivatives, "male_female_seperated_Glut_umap_figure.pdf")
+plt.close("all")
+fig, ax = plt.subplots(1,2, figsize = [7.2, 7.2])
+ax[0].scatter(embedding[maleIdxArray][:,0], embedding[maleIdxArray][:,1], s = 1, linewidth= 0, c = "blue", label = "Male")
+ax[1].scatter(embedding[femaleIdxArray][:,0], embedding[femaleIdxArray][:,1], s = 1, linewidth= 0, c = "red", label = "female")
+ax[0].set_title("Male")
+ax[1].set_title("Female")
+fig.suptitle("UMAPS of Glut cells in Male and Female")
+plt.savefig(umapMaleFemaleSepFigLoc)
+plt.show()
+
+#%% plotting each subject with assigned color
+umapAllSamples = os.path.join(derivatives, "all_samples_umap_figure.pdf")
+plt.close("all")
+for sampleID in foldernames:
+    
+
+    sampleIDIdxArray = allSubIDArray == sampleID
+    
+    #embedding[maleIdxArray, :]
+    #embedding[femaleIdxArray, :]
     
     
-        
+    plt.scatter(embedding[sampleIDIdxArray][:,0], embedding[sampleIDIdxArray][:,1], s = 1, linewidth= 0, label = sampleID )
+    
+    plt.title("UMAP of all samples")
+plt.legend()
+plt.savefig(umapAllSamples)
+plt.show()
+
+#%% one sample slices
+
+uniqueSampleSlices = np.unique(allSamples['mouse_609882_registered_082725_amygdalar']["z_coord"])
+# colors = [cm.to_hex(plt.cm.tab20(i)for i in range(len(uniqueSampleSlices)))]
+
+sampleIDIdxArray = allSubIDArray == 'mouse_609882_registered_082725_amygdalar'
+sampleEmbedding = embedding[sampleIDIdxArray, :]
+for i, z_cord in enumerate(uniqueSampleSlices):
+    sliceIdxArray = allSamples['mouse_609882_registered_082725_amygdalar']["z_coord"] == z_cord
+    plt.scatter(sampleEmbedding[sliceIdxArray][:,0], sampleEmbedding[sliceIdxArray][:,1], s = 1, linewidth= 0, label = z_cord)
+
+plt.title("UMAP of all samples")
+plt.legend()
+#plt.savefig(umapAllSamples)
+plt.show()
     
 
 
